@@ -147,6 +147,7 @@ class Explorer_robot (AbstractAgent):
     def deliberate(self) -> bool:
         if self.pos == (0, 0) and self.body.rtime < 2 * min(self.COST_LINE, self.COST_DIAG):
             return False
+        
 
         self.read_nearby_tiles()
         self.check_for_victim()

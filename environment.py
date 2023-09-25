@@ -254,6 +254,9 @@ class Env:
 
                 elif body.state == PhysAgent.IDLE:
                     active_or_idle = True
+    
+
+        
 
             # Update the grid after the delay
             if self.dic["DELAY"] > 0:
@@ -262,7 +265,7 @@ class Env:
             self.__draw()
 
             # Show metrics
-            if not active_or_idle:
+            if body.state == PhysAgent.ENDED:
                 print("from env: no active or idle agent scheduled for execution... terminating")
                 self.print_results()
                 print("\n--------------")
@@ -326,6 +329,7 @@ class Env:
         print(f"Total of victims   (V)  = {self.nb_of_victims:3d}")
               
         print("\n\n*** Final results per agent ***")
+        totalVictims = []
         for body in self.agents:
             print(f"\n[ Agent {body.mind.NAME} ]")
             if body.state == PhysAgent.DEAD:
@@ -337,11 +341,17 @@ class Env:
         
             # Found victims
             found = body.get_found_victims()
+            for victim in found:
+                if victim not in totalVictims:
+                    totalVictims.append(victim)
             self.__print_victims(found, "found","e")
 
             # Saved victims
             saved = body.get_saved_victims()
             self.__print_victims(saved, "saved","s")
+
+        print("\n\n*** Total victims found ***")
+        self.__print_victims(totalVictims, "found", "")
  
             
 
