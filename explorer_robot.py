@@ -79,13 +79,14 @@ class Explorer_robot (AbstractAgent):
 
             tile_type = self.tile_tested[(x, y)]
             if tile_type == PhysAgent.WALL or tile_type == PhysAgent.END:
-                self.path_not_tested[self.pos].remove(dir)      
+                self.path_not_tested[self.pos].remove(dir)
                 continue
 
             walk_cost = self.action_cost[dir.name]
             time_left = self.body.rtime - walk_cost
 
             cost = self.path_to_origin(pos=(x, y))
+
 
             if cost > time_left:
                 self.path_not_tested[self.pos].remove(dir)
