@@ -1,13 +1,16 @@
 # Author Tacla, UTFPR
 # First version  fev/2023
 
-import sys
-import os
-import pygame
-import random
 import csv
+import os
 import time
-from abstract_agent import AbstractAgent
+
+import numpy as np
+import pygame
+from matplotlib import pyplot as plt
+
+from sklearn.cluster import KMeans
+from kneed import KneeLocator
 from physical_agent import PhysAgent
 
 
@@ -270,11 +273,14 @@ class Env:
             # Show metrics
             if not active_or_idle:
                 print("from env: no active or idle agent scheduled for execution... terminating")
-                self.print_results()
+                victim_positions = self.print_results()
                 print("\n--------------")
+                model = KMeans(n_clusters=self.find_elbow(victim_positions), n_init=10)
+                model.fit(victim_positions)
+                self.plot_centroids(victim_positions, model)
                 input("from env: Tecle qualquer coisa para encerrar >>")
                 running = False
-   
+
 
         # Quit Pygame
         pygame.quit()
@@ -332,7 +338,8 @@ class Env:
         print(f"Total of victims   (V)  = {self.nb_of_victims:3d}")
               
         print("\n\n*** Final results per agent ***")
-        totalVictims = []
+        total_victims = []
+        all_victims_pos = []
         for body in self.agents:
             print(f"\n[ Agent {body.mind.NAME} ]")
             if body.state == PhysAgent.DEAD:
@@ -346,8 +353,9 @@ class Env:
             found = body.get_found_victims()
             for victim in found:
                 print(self.victims[victim])
-                if victim not in totalVictims:
-                    totalVictims.append(victim)
+                if victim not in total_victims:
+                    total_victims.append(victim)
+                    all_victims_pos.append(self.victims[victim])
             self.__print_victims(found, "found","e")
 
             # Saved victims
@@ -355,8 +363,39 @@ class Env:
             self.__print_victims(saved, "saved","s")
 
         print("\n\n*** Total victims found ***")
-        self.__print_victims(totalVictims, "found", "")
+        self.__print_victims(total_victims, "found", "")
+        return np.array(all_victims_pos)
  
-            
+    def find_elbow(self, data):
+        inertia_values = []
+        for k in range(1, (len(data))):
+            km = KMeans(n_clusters=k, n_init=10)
+            km.fit(data)
+            inertia_values.append(km.inertia_)
 
+        kn = KneeLocator(range(1, len(inertia_values)+1), inertia_values, curve='convex', direction='decreasing')
+        return kn.knee
+
+    @staticmethod
+    def plot_centroids(data, km):
+        y_km = km.fit_predict(data)
+        color_array = ['lightblue', 'lightgreen', 'orange', 'yellow', 'pink']
+        for i in range(len(km.cluster_centers_)):
+            plt.scatter(
+                data[y_km == i, 0], data[y_km == i, 1],
+                s=50, c=color_array[i],
+                marker='s', edgecolor='black',
+                label=f'cluster {i+1}'
+            )
+
+        # plot the centroids
+        plt.scatter(
+            km.cluster_centers_[:, 0], km.cluster_centers_[:, 1],
+            s=250, marker='*',
+            c='red', edgecolor='black',
+            label='centroids'
+        )
+        plt.legend(scatterpoints=1)
+        plt.grid()
+        plt.show()
 
