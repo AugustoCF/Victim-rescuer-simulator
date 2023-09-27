@@ -16,18 +16,21 @@ class Explorer_robot (AbstractAgent):
         super().__init__(env, config_file)
 
         self.graph = Graph()                                            
-        self.pos = (0,0)
+        self.pos = (0, 0)
         self.victims = {}                            
         self.tile_tested = {}                       
         self.path_not_tested = {}       
         self.backtrack = {}
+        self.cost_matrix = []
+        self.pos_matrix = (self.TLIM / 2, self.TLIM / 2)
+
 
         self.action_cost = {
             "N": 1, "S": 1, "E": 1, "W": 1,
             "NE": 1.5, "SE": 1.5, "NW": 1.5, "SW": 1.5
         }
 
-        self.add_position_to_map(dir= Direction.NONE, tile_type= PhysAgent.CLEAR)  
+        self.add_position_to_map(dir=Direction.NONE, tile_type=PhysAgent.CLEAR)
         self.read_nearby_tiles()
                                       
 
@@ -71,6 +74,40 @@ class Explorer_robot (AbstractAgent):
 
         for i in range(8):
             self.add_position_to_map(dir=DIRECTIONS[i], tile_type=nearby_tiles[i])
+
+    # Creates a N by N Matrix, where N = TLIM. Each tile in the matrix is initiated as TLIM also.
+    # Each tile is instantiated as TLIM for, when checking for the lowest value in nearby tiles, this value is always
+    # lower in tiles which were already explored.
+
+    def instantiate_matrix(self) -> None:
+        time = self.TLIM
+        for i in range(time):
+            row = []
+            for j in range(time):
+                row.append(-1)
+            self.cost_matrix.append(row)
+        self.cost_matrix[time / 2][time / 2] = 0  # starts initial tile as 0
+
+    """Important: robot goes to new position, THEN checks the tiles around it to find lowest.
+    """
+    def update_time_matrix(self) -> None:
+        """The matrix index is [row][column], that means that these values on the delta should be read as [vertical][horizontal]
+        not as [x][y], as [0,-1] doesn't go up, it goes left. The order here is, clockwise, left, left up, up, right up,
+        right, right down, down, left down, finish.
+        """
+        delta = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]]
+        lowest = 100000
+        position = []
+        for d in delta:
+            cost = self.cost_matrix[self.pos_matrix[1] + d[1]][self.pos_matrix[0] + d[0]]
+            if cost < lowest and cost != -1:
+                lowest = cost
+                position = d
+
+        if position[0] != 0 and position[1] != 0: #checks if the direction was a diagonal
+            self.cost_matrix[self.pos[1]][self.pos[0]] = lowest + 1.5
+        else:
+            self.cost_matrix[self.pos[1]][self.pos[0]] = lowest + 1
 
 
     def remove_unreachable_tiles(self) -> None:
@@ -117,6 +154,8 @@ class Explorer_robot (AbstractAgent):
         walk = self.body.walk(dx=dx, dy=dy)
 
         self.pos = (self.pos[0] + dx, self.pos[1] + dy)
+        self.pos_matrix = (self.pos_matrix[1] + dy, self.pos_matrix[0] + dx)
+        self.update_time_matrix()
     
         self.backtrack[self.pos].append(self.oppositeDirection(dx, dy))
 
@@ -153,6 +192,8 @@ class Explorer_robot (AbstractAgent):
         self.read_nearby_tiles()
         self.check_for_victim()
         self.remove_unreachable_tiles()
+        if not self.cost_matrix:
+            self.instantiate_matrix()
   
         if len(self.path_not_tested[self.pos]) == 0:
             self.move_Backtrack()
