@@ -80,13 +80,17 @@ class Explorer_robot (AbstractAgent):
     # lower in tiles which were already explored.
 
     def instantiate_matrix(self) -> None:
-        time = self.TLIM
+        time = round(self.TLIM)
+        if not time % 2:
+            time = time + 1
+        x = round(time/2)
+        y = round(time/2)
         for i in range(time):
             row = []
             for j in range(time):
                 row.append(-1)
             self.cost_matrix.append(row)
-        self.cost_matrix[time / 2][time / 2] = 0  # starts initial tile as 0
+        self.cost_matrix[y][x] = 0  # starts initial tile as 0
 
     """Important: robot goes to new position, THEN checks the tiles around it to find lowest.
     """
@@ -95,26 +99,36 @@ class Explorer_robot (AbstractAgent):
         not as [x][y], as [0,-1] doesn't go up, it goes left. The order here is, clockwise, left, left up, up, right up,
         right, right down, down, left down, finish.
         """
-        delta = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]]
+        delta = [(0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1)]
         lowest = 100000
         position = []
+        y = self.pos_matrix[0]
+        x = self.pos_matrix[1]
+
         for d in delta:
-            cost = self.cost_matrix[self.pos_matrix[1] + d[1]][self.pos_matrix[0] + d[0]]
+            dy = d[1]
+            dx = d[0]
+            cost = self.cost_matrix[y + dy][x + dx]
             if cost < lowest and cost != -1:
                 lowest = cost
                 position = d
 
         if position[0] != 0 and position[1] != 0: #checks if the direction was a diagonal
-            self.cost_matrix[self.pos[1]][self.pos[0]] = lowest + 1.5
+            self.cost_matrix[y][x] = lowest + 1.5
         else:
-            self.cost_matrix[self.pos[1]][self.pos[0]] = lowest + 1
+            self.cost_matrix[y][x] = lowest + 1
 
     def matrix_backtrack(self) -> tuple: #returns the delta for the lowest cost, so the robot knows where to move
-        delta = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]]
+        delta = [(0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1)]
         lowest = 100000
         position = []
+        y = self.pos_matrix[0]
+        x = self.pos_matrix[1]
+
         for d in delta:
-            cost = self.cost_matrix[self.pos_matrix[1] + d[1]][self.pos_matrix[0] + d[0]]
+            dy = d[1]
+            dx = d[0]
+            cost = self.cost_matrix[y + dy][x + dx]
             if cost < lowest and cost != -1:
                 lowest = cost
                 position = d
@@ -167,7 +181,7 @@ class Explorer_robot (AbstractAgent):
         walk = self.body.walk(dx=dx, dy=dy)
 
         self.pos = (self.pos[0] + dx, self.pos[1] + dy)
-        self.pos_matrix = (self.pos_matrix[1] + dy, self.pos_matrix[0] + dx)
+        self.pos_matrix = (self.pos_matrix[0] + dy, self.pos_matrix[1] + dx)
         self.update_time_matrix()
     
         self.backtrack[self.pos].append(self.oppositeDirection(dx, dy))
