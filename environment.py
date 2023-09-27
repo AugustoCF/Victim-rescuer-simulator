@@ -8,6 +8,7 @@ import time
 import numpy as np
 import pygame
 from matplotlib import pyplot as plt
+from math import ceil
 
 from sklearn.cluster import KMeans
 from kneed import KneeLocator
@@ -368,18 +369,20 @@ class Env:
  
     def find_elbow(self, data):
         inertia_values = []
-        for k in range(1, (len(data))):
+        for k in range(1, ceil(len(data)/2)):
             km = KMeans(n_clusters=k, n_init=10)
             km.fit(data)
             inertia_values.append(km.inertia_)
 
         kn = KneeLocator(range(1, len(inertia_values)+1), inertia_values, curve='convex', direction='decreasing')
+        if kn.knee is None:
+            return 3
         return kn.knee
 
     @staticmethod
     def plot_centroids(data, km):
         y_km = km.fit_predict(data)
-        color_array = ['lightblue', 'lightgreen', 'orange', 'yellow', 'pink']
+        color_array = ['lightblue', 'lightgreen', 'orange', 'yellow', 'pink', 'blue', 'green']
         for i in range(len(km.cluster_centers_)):
             plt.scatter(
                 data[y_km == i, 0], data[y_km == i, 1],
