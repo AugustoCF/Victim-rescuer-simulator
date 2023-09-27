@@ -12,7 +12,7 @@ from rescuer import Rescuer
 from aux_file import Direction, DIRECTIONS
 
 class Explorer_robot (AbstractAgent):
-    def __init__(self, env, config_file):
+    def __init__(self, env, config_file, priority_directions):
         super().__init__(env, config_file)
 
         self.graph = nx.Graph()                                            
@@ -28,6 +28,7 @@ class Explorer_robot (AbstractAgent):
             "NE": 1.5, "SE": 1.5, "NW": 1.5, "SW": 1.5
         }
 
+        self.priority_directions = priority_directions
         self.add_position_to_map(dir= Direction.NONE, tile_type= PhysAgent.CLEAR)  
         self.read_nearby_tiles()
                                       
@@ -124,6 +125,27 @@ class Explorer_robot (AbstractAgent):
             vector[i], vector[k] = vector[k], vector[i]
 
 
+    def prio_weight_dir(self, dir: str, list) -> int:
+        if dir == list[0]:
+            return 8
+        if dir == list[1]:
+            return 7
+        if dir == list[2]:
+            return 6
+        if dir == list[3]:
+            return 5
+        if dir == list[4]:
+            return 4
+        if dir == list[5]:
+            return 3
+        if dir == list[6]:
+            return 2
+        if dir == list[7]:
+            return 1
+        else:
+            return 1
+
+
     def order_paths(self) -> None:
         directions = self.path_not_tested[self.pos].copy()
     
@@ -133,9 +155,9 @@ class Explorer_robot (AbstractAgent):
 
         for i in range(len(directions)):
             dir = directions[i]
-            weights[i] = ((1/self.action_cost[dir.name]) * random.uniform(1.0, 1.4))
-
-        self.lil_shuffle(weights, 0.3)
+            weights[i] = (1/self.action_cost[dir.name] * self.prio_weight_dir(dir.name, self.priority_directions) * random.uniform(1.0, 1.3))
+            
+        # self.lil_shuffle(weights, 0.1)
 
         weights = np.array(weights)
         directions = np.array(directions)

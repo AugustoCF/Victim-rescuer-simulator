@@ -7,6 +7,7 @@ import time
 from environment import Env
 from explorer_robot import Explorer_robot
 from rescuer import Rescuer
+from aux_file import priority_directions
 
 def main(data_folder_name):
    
@@ -31,10 +32,10 @@ def main(data_folder_name):
 
     # Explorer needs to know rescuer to send the map
     # that's why rescuer is instatiated before
-    exp1 = Explorer_robot(env, explorer_file_1)
-    exp2 = Explorer_robot(env, explorer_file_2)
-    exp3 = Explorer_robot(env, explorer_file_3)
-    exp4 = Explorer_robot(env, explorer_file_4)
+    exp1 = Explorer_robot(env, explorer_file_1,priority_directions[0])
+    exp2 = Explorer_robot(env, explorer_file_2,priority_directions[1])
+    exp3 = Explorer_robot(env, explorer_file_3,priority_directions[2])
+    exp4 = Explorer_robot(env, explorer_file_4,priority_directions[3])
 
     # Run the environment simulator
     env.run()
@@ -50,7 +51,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         data_folder_name = sys.argv[1]
     else:
-        # data_folder_name = os.path.join("datasets", "data_100x80_132vic")
-        data_folder_name = os.path.join("datasets", "data_20x20_42vic")
+        data_folder_name = os.path.join("datasets", "data_100x80_132vic")
+        # data_folder_name = os.path.join("datasets", "data_20x20_42vic")
      
     main(data_folder_name)
