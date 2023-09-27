@@ -109,6 +109,17 @@ class Explorer_robot (AbstractAgent):
         else:
             self.cost_matrix[self.pos[1]][self.pos[0]] = lowest + 1
 
+    def matrix_backtrack(self) -> tuple: #returns the delta for the lowest cost, so the robot knows where to move
+        delta = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]]
+        lowest = 100000
+        position = []
+        for d in delta:
+            cost = self.cost_matrix[self.pos_matrix[1] + d[1]][self.pos_matrix[0] + d[0]]
+            if cost < lowest and cost != -1:
+                lowest = cost
+                position = d
+        return position
+
 
     def remove_unreachable_tiles(self) -> None:
         for dir in self.path_not_tested[self.pos].copy():       
@@ -136,6 +147,8 @@ class Explorer_robot (AbstractAgent):
         if path is None:
             raise ValueError("Path not found")
         return path.total_cost
+
+
 
 
     def move_Backtrack(self) -> None:
