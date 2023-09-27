@@ -109,8 +109,43 @@ class Explorer_robot (AbstractAgent):
         self.pos = (self.pos[0] + dx, self.pos[1] + dy)
 
 
+    def lil_shuffle(self, vector, intensity=0.1) -> None:
+        size = len(vector)
+        mid = int(size * intensity)
+
+        for i in range(size):
+            j = min(i + mid, size - 1)
+            k = random.randint(i, j)
+
+            # Troca os elementos nas posições i e k
+            vector[i], vector[k] = vector[k], vector[i]
+
+
+    def order_paths(self) -> None:
+        directions = self.path_not_tested[self.pos].copy()
+        print(directions)
+        uniform_weights = [1 for _ in range(len(directions))]
+        print(uniform_weights)
+        weights = uniform_weights.copy()
+
+        for i in range(len(directions)):
+            dir = directions[i]
+            print(dir)
+
+            weights[i] = ((1/self.action_cost[dir.name]) * random.uniform(1.0, 1.5))
+
+        self.lil_shuffle(weights, 0.3)
+
+        weights = np.array(weights)
+        directions = np.array(directions)
+        directions = directions[np.argsort(weights)]
+        directions = directions[::-1]
+        self.path_not_tested[self.pos] = directions.tolist()
+
+
     def move_DFS(self) -> None:
-        random.shuffle(self.path_not_tested[self.pos])
+
+        self.order_paths()
   
         dx, dy = self.path_not_tested[self.pos].pop(0).value
 
