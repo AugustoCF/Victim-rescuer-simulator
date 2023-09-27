@@ -1,6 +1,6 @@
 import numpy as np
 import random
-from dijkstar import Graph, find_path
+import networkx as nx
 from abc import abstractmethod
 
 from abstract_agent import AbstractAgent
@@ -15,12 +15,13 @@ class Explorer_robot (AbstractAgent):
     def __init__(self, env, config_file):
         super().__init__(env, config_file)
 
-        self.graph = Graph()                                            
+        self.graph = nx.Graph()                                            
         self.pos = (0,0)
         self.victims = {}                            
         self.tile_tested = {}                       
         self.path_not_tested = {}       
         self.backtrack = {}
+
 
         self.action_cost = {
             "N": 1, "S": 1, "E": 1, "W": 1,
@@ -62,9 +63,9 @@ class Explorer_robot (AbstractAgent):
             if ((x2, y2) not in self.tile_tested or self.tile_tested[(x2, y2)] != PhysAgent.CLEAR):
                 continue
 
-            self.graph.add_edge((x, y), (x2, y2), self.action_cost[dir.name])   # A -> B
-            self.graph.add_edge((x2, y2), (x, y), self.action_cost[dir.name])   # B -> A
-            
+            self.graph.add_edge((x, y), (x2, y2), weight = self.action_cost[dir.name])   # A -> B
+            self.graph.add_edge((x2, y2), (x, y), weight = self.action_cost[dir.name])   # B -> A
+
 
     def read_nearby_tiles(self) -> None:
         nearby_tiles = self.body.check_obstacles()     
@@ -94,11 +95,13 @@ class Explorer_robot (AbstractAgent):
 
 
     def path_to_origin(self, pos: tuple[int, int]) -> float:
-        path = find_path(self.graph, pos, (0, 0))   # Method from the Dijkstar library
+        path = nx.astar_path(self.graph, pos, (0,0), None, 'weight')
+
+        cost_of_path = nx.shortest_path_length(self.graph, pos,(0,0), 'weight')
 
         if path is None:
             raise ValueError("Path not found")
-        return path.total_cost
+        return cost_of_path
 
 
     def move_Backtrack(self) -> None:
@@ -123,16 +126,14 @@ class Explorer_robot (AbstractAgent):
 
     def order_paths(self) -> None:
         directions = self.path_not_tested[self.pos].copy()
-        print(directions)
+    
         uniform_weights = [1 for _ in range(len(directions))]
-        print(uniform_weights)
+   
         weights = uniform_weights.copy()
 
         for i in range(len(directions)):
             dir = directions[i]
-            print(dir)
-
-            weights[i] = ((1/self.action_cost[dir.name]) * random.uniform(1.0, 1.5))
+            weights[i] = ((1/self.action_cost[dir.name]) * random.uniform(1.0, 1.4))
 
         self.lil_shuffle(weights, 0.3)
 
