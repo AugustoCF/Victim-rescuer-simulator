@@ -1,3 +1,6 @@
+from typing import Tuple
+
+
 class Victim:
     """
     Class for the victims
@@ -5,7 +8,7 @@ class Victim:
     def __init__(
         self,
         id: int,
-        pos: tuple[int, int],
+        pos: Tuple[int, int],
         pSist: float,
         pDiast: float,
         qPA: float,
