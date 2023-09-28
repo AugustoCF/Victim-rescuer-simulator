@@ -255,7 +255,6 @@ class Env:
                             print("from env: ag " + body.mind.NAME + " succesfully terminated, it is at the base")
                             body.set_state(PhysAgent.ENDED)
                             active_or_idle = False
-
                         else:
                             print("from env: ag " + body.mind.NAME + " is not at the base and asked for termination. Now, it's dead")
                             body.set_state(PhysAgent.DEAD)
@@ -275,6 +274,8 @@ class Env:
 
             # Show metrics
             if not active_or_idle:
+                #for line in body.mind.cost_matrix:
+                #    print(line)
                 print("from env: no active or idle agent scheduled for execution... terminating")
                 victim_positions = self.print_results()
                 print("\n--------------")

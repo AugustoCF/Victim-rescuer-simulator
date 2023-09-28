@@ -24,7 +24,9 @@ class Explorer_robot (AbstractAgent):
         self.path_not_tested = {}       
         self.backtrack = {}
         self.cost_matrix = []
-        self.pos_matrix = (0, 0)
+        self.pos_matrix = [0, 0]
+        self.initial_x = 0
+        self.initial_y = 0
 
 
         self.action_cost = {
@@ -86,27 +88,32 @@ class Explorer_robot (AbstractAgent):
             time = time + 1
         x = round(time / 2) - 1 # o -1 é pra ficar no meio, contagem começa em 0
         y = round(time / 2) - 1
+        self.initial_x = x
+        self.initial_y = y
         for i in range(time):
             row = []
             for j in range(time):
                 row.append(-1)
             self.cost_matrix.append(row)
         self.cost_matrix[y][x] = 0  # starts initial tile as 0
-        self.pos_matrix = (y, x)
+        #self.pos_matrix = (y, x)
+        self.pos_matrix[0] = y
+        self.pos_matrix[1] = x
 
     def update_time_matrix(self) -> None:
         """The matrix index is [row][column], that means that these values on the delta should be read as [vertical][horizontal]
         not as [x][y], as [0,-1] doesn't go up, it goes left. The order here is, clockwise, left, left up, up, right up,
         right, right down, down, left down, finish.
         """
-        position = self.find_matrix_lowest()
-        y = self.pos_matrix[0]
-        x = self.pos_matrix[1]
-        lowest = self.cost_matrix[y + position[1]][x + position[0]]
-        if position[0] != 0 and position[1] != 0:  # checks if the direction was a diagonal
-            self.cost_matrix[y][x] = lowest + 1.5
-        else:
-            self.cost_matrix[y][x] = lowest + 1
+        if self.cost_matrix[self.pos_matrix[0]][self.pos_matrix[1]] == -1:
+            position = self.find_matrix_lowest()
+            y = self.pos_matrix[0]
+            x = self.pos_matrix[1]
+            lowest = self.cost_matrix[y + position[1]][x + position[0]]
+            if position[0] != 0 and position[1] != 0:  # checks if the direction was a diagonal
+                self.cost_matrix[y][x] = lowest + 1.5
+            else:
+                self.cost_matrix[y][x] = lowest + 1
 
     def find_matrix_lowest(self) -> tuple:  # returns the delta for the lowest cost, so the robot knows where to move
         delta = [(0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1)]
@@ -159,9 +166,13 @@ class Explorer_robot (AbstractAgent):
     def move_Backtrack(self) -> None:
         dx, dy = self.find_matrix_lowest()
 
-        walk = self.body.walk(dx=dx, dy=dy)
+        self.body.walk(dx=dx, dy=dy)
 
         self.pos = (self.pos[0] + dx, self.pos[1] + dy)
+        #self.pos_matrix = (self.pos_matrix[0] + dy, self.pos_matrix[1] + dx)
+        self.pos_matrix[1] = self.pos_matrix[1] + dx
+        self.pos_matrix[0] = self.pos_matrix[0] + dy
+
 
 
     def lil_shuffle(self, vector, intensity=0.1) -> None:
@@ -222,11 +233,14 @@ class Explorer_robot (AbstractAgent):
         self.order_paths()
   
         dx, dy = self.path_not_tested[self.pos].pop(0).value
-        print(self.path_not_tested[self.pos])
+        #print(self.path_not_tested[self.pos])
         walk = self.body.walk(dx=dx, dy=dy)
 
         self.pos = (self.pos[0] + dx, self.pos[1] + dy)
-        self.pos_matrix = (self.pos_matrix[0] + dy, self.pos_matrix[1] + dx)
+        #self.pos_matrix = (self.pos_matrix[0] + dy, self.pos_matrix[1] + dx)
+        self.pos_matrix[1] = self.pos_matrix[1] + dx
+        self.pos_matrix[0] = self.pos_matrix[0] + dy
+
         self.update_time_matrix()
     
         #self.backtrack[self.pos].append(self.oppositeDirection(dx, dy))
@@ -270,11 +284,15 @@ class Explorer_robot (AbstractAgent):
         self.check_for_victim()
         self.remove_unreachable_tiles()
 
-        if self.body.rtime <= self.cost_matrix[self.pos_matrix[1]][self.pos_matrix[0]] + 2:
-            print(self.body.rtime, self.cost_matrix[self.pos_matrix[1]][self.pos_matrix[0]] )
-            while self.pos != (0, 0) or self.body.state != 2 or self.body.state != -1:
+        if self.body.rtime <= self.cost_matrix[self.pos_matrix[0]][self.pos_matrix[1]] + 2:
+            #print(self.initial_y, self.initial_x)
+            #print(self.body.rtime, self.cost_matrix[self.pos_matrix[0]][self.pos_matrix[1]], self.pos, self.pos_matrix)
+            while self.cost_matrix[self.pos_matrix[0]][self.pos_matrix[1]] != 0:
+            #while not self.body.at_base():
                 self.move_Backtrack()
-        if len(self.path_not_tested[self.pos]) == 0:
+                print(self.body.rtime, self.cost_matrix[self.pos_matrix[0]][self.pos_matrix[1]], self.pos,
+                      self.pos_matrix)
+        elif len(self.path_not_tested[self.pos]) == 0:
             self.move_Backtrack()
         else:
             self.move_DFS()
