@@ -35,8 +35,8 @@ class ExplorerRobot(AbstractAgent):
         self.instantiate_matrix()
 
     @staticmethod
-    def position_shift(dir: Direction, x, y):
-        dx, dy = dir.value
+    def position_shift(direction: Direction, x, y):
+        dx, dy = direction.value
         return x + dx, y + dy
 
     @staticmethod
@@ -176,26 +176,30 @@ class ExplorerRobot(AbstractAgent):
             # Troca os elementos nas posições i e k
             vector[i], vector[k] = vector[k], vector[i]
 
-    @staticmethod
-    def get_direction_prio_weight(direction: str, priority_list) -> int:
-        if direction == priority_list[0]:
-            return 8
-        if direction == priority_list[1]:
-            return 7
-        if direction == priority_list[2]:
-            return 6
-        if direction == priority_list[3]:
-            return 5
-        if direction == priority_list[4]:
-            return 4
-        if direction == priority_list[5]:
-            return 3
-        if direction == priority_list[6]:
-            return 2
-        if direction == priority_list[7]:
-            return 1
+    def get_direction_prio_weight(self, direction, priority_list) -> int:
+        dx, dy = direction.value
+        multiplier = 1
+        if self.get_cost_from_matrix(self.current_matrix_pos, dx, dy) == -1:
+            multiplier = 9
+
+        if direction.name == priority_list[0]:
+            return 8*multiplier
+        if direction.name == priority_list[1]:
+            return 7*multiplier
+        if direction.name == priority_list[2]:
+            return 6*multiplier
+        if direction.name == priority_list[3]:
+            return 5*multiplier
+        if direction.name == priority_list[4]:
+            return 4*multiplier
+        if direction.name == priority_list[5]:
+            return 3*multiplier
+        if direction.name == priority_list[6]:
+            return 2*multiplier
+        if direction.name == priority_list[7]:
+            return 1*multiplier
         else:
-            return 1
+            return 1*multiplier
 
     def order_paths(self) -> None:
         directions = self.path_not_tested[self.pos].copy()
@@ -206,8 +210,9 @@ class ExplorerRobot(AbstractAgent):
 
         for i in range(len(directions)):
             direction = directions[i]
-            weights[i] = (1 / self.action_cost[direction.name] * self.get_direction_prio_weight(direction.name,
-                                                                                                self.priority_directions) * random.uniform(1.0, 1.3))
+            weights[i] = (1 / self.action_cost[direction.name] * self.get_direction_prio_weight(direction,
+                                                                                                self.priority_directions) * random.uniform(
+                1.0, 1.3))
 
         # self.lil_shuffle(weights, 0.1)
 
@@ -233,7 +238,7 @@ class ExplorerRobot(AbstractAgent):
 
         if victim_id != -1:
             time_left = self.body.rtime - self.COST_READ
-            cost = self.cost_matrix[self.current_matrix_pos[1]][self.current_matrix_pos[0]]
+            cost = self.get_cost_from_matrix(self.current_matrix_pos)
             if cost < time_left:
                 vital_signs = self.body.read_vital_signals(victim_id)
                 self.victims.update
