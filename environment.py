@@ -4,15 +4,14 @@
 import csv
 import os
 import time
-from pprint import pprint
+from math import ceil
 
 import numpy as np
 import pygame
-from matplotlib import pyplot as plt
-from math import ceil
-
-from sklearn.cluster import KMeans
 from kneed import KneeLocator
+from matplotlib import pyplot as plt
+from sklearn.cluster import KMeans
+
 from physical_agent import PhysAgent
 
 
@@ -30,7 +29,7 @@ class Env:
     YELLOW = (255, 255, 0)
 
     # Victim color by injury severity - from the most severe to the least
-    VICTIM_COLOR = [(255,51,51), (255,128,0), (255,255,51), (128,255,0)]
+    VICTIM_COLOR = [(255, 51, 51), (255, 128, 0), (255, 255, 51), (128, 255, 0)]
 
     # Index to the gravity value and label in sinais_vitais.txt (position)
     IDX_GRAVITY = 6
@@ -38,27 +37,30 @@ class Env:
 
     def __init__(self, data_folder):
         # instance attributes
-        self.data_folder = data_folder # folder for the config and data files
-        self.dic = {}          # configuration of grid and window
-        self.agents = []       # list of running physical agents
-        self.walls  = None     # list of walls - 1 for walls, 0 for no walls - inner list is row
-                               # explorer agent cannot access this attribute, it has to find!
-        self.nb_of_victims = 0 # total number of victims
-        self.victims = []      # positional: the coordinates of the victims [(x1,y1), ..., (xn, yn)]
-        self.severity = []     # positional: the injury severity for each victim (label)
-        self.gravity = []      # positional: the injury gravity for each victim (float value)
-        self.sum_gravity = 0   # sum of all gravity values for peg and psg calculation
-        self.signals = []      # positional: the vital signals of the victims [[i,s1,...,s5,g,l],...]
-        self.found   = [[]]    # positional: Physical agents that found each victim [[ag1] [ag2, ag3], ...] ag1 found vict 0, ag2 and 3, vict 1, ... 
-        self.saved   = [[]]    # positional: Physical agents that saved each victim 
-        
+        self.screen = None
+        self.font = None
+        self.data_folder = data_folder  # folder for the config and data files
+        self.dic = {}  # configuration of grid and window
+        self.agents = []  # list of running physical agents
+        self.walls = None  # list of walls - 1 for walls, 0 for no walls - inner list is row
+        # explorer agent cannot access this attribute, it has to find!
+        self.nb_of_victims = 0  # total number of victims
+        self.victims = []  # positional: the coordinates of the victims [(x1,y1), ..., (xn, yn)]
+        self.severity = []  # positional: the injury severity for each victim (label)
+        self.gravity = []  # positional: the injury gravity for each victim (float value)
+        self.sum_gravity = 0  # sum of all gravity values for peg and psg calculation
+        self.signals = []  # positional: the vital signals of the victims [[i,s1,...,s5,g,l],...]
+        self.found = [
+            []]  # positional: Physical agents that found each victim [[ag1] [ag2, ag3], ...] ag1 found vict 0, ag2 and 3, vict 1, ...
+        self.saved = [[]]  # positional: Physical agents that saved each victim
+
         # Read the environment config file
         self.__read_config()
         # print(self.dic)
 
         # Set up the walls - it's a list composed of GRID_WIDTH lists. Each sublist is a column (y=0, 1, ...)
         self.walls = [[0 for y in range(self.dic["GRID_HEIGHT"])] for x in range(self.dic["GRID_WIDTH"])]
-        walls_file = os.path.join(self.data_folder,"env_walls.txt")
+        walls_file = os.path.join(self.data_folder, "env_walls.txt")
 
         with open(walls_file, 'r') as csvfile:
             csvreader = csv.reader(csvfile)
@@ -70,32 +72,32 @@ class Env:
 
         # Read and put the victims into the grid
 
-        victims_file = os.path.join(self.data_folder,"env_victims.txt")
-        
+        victims_file = os.path.join(self.data_folder, "env_victims.txt")
+
         with open(victims_file, 'r') as csvfile:
             csvreader = csv.reader(csvfile)
             for row in csvreader:
                 x = int(row[0])
                 y = int(row[1])
-                self.victims.append((x, y))   # append tuples
+                self.victims.append((x, y))  # append tuples
 
         self.nb_of_victims = len(self.victims)
 
         # Load the vital signals of the victims
-        vs_file = os.path.join(self.data_folder,"sinais_vitais.txt")
-        
+        vs_file = os.path.join(self.data_folder, "sinais_vitais.txt")
+
         with open(vs_file, 'r') as csvfile:
             csvreader = csv.reader(csvfile)
             for row in csvreader:
                 seq = int(row[0])  # seq number
-                sp = float(row[1]) # diastolic pression
-                dp = float(row[2]) # sistolic pression
-                qp = float(row[3]) # quality of pression
-                pf = float(row[4]) # pulse frequency
-                rf = float(row[5]) # respiratory frequency
-                gr = float(row[Env.IDX_GRAVITY]) # injury severity value
+                sp = float(row[1])  # diastolic pression
+                dp = float(row[2])  # sistolic pression
+                qp = float(row[3])  # quality of pression
+                pf = float(row[4])  # pulse frequency
+                rf = float(row[5])  # respiratory frequency
+                gr = float(row[Env.IDX_GRAVITY])  # injury severity value
                 lb = int(row[Env.IDX_SEVERITY])  # label of the injury severity
-                
+
                 self.signals.append([seq, sp, dp, qp, pf, rf, gr, lb])
                 self.severity.append(lb)
                 self.gravity.append(gr)
@@ -105,7 +107,7 @@ class Env:
             print("from env: number of victims of env_victims.txt greater than vital signals")
             print("from env: end of execution")
             exit()
-            
+
         if self.nb_of_victims < len(self.signals):
             print("from env: nb of victims of env_victims.txt less than vital signals")
             print("from env: Assuming nb of victims of env_victims.txt")
@@ -113,14 +115,12 @@ class Env:
         # Set up found and saved victims' lists 
         self.found = [[] for v in range(self.nb_of_victims)]
         self.saved = [[] for v in range(self.nb_of_victims)]
-                
-        # Set up with the trace color of the last physical agent who visited the cell
-        self.visited = [[(0,0,0) for y in range(self.dic["GRID_HEIGHT"])] for x in range(self.dic["GRID_WIDTH"])]
-        
 
-    
+        # Set up with the trace color of the last physical agent who visited the cell
+        self.visited = [[(0, 0, 0) for y in range(self.dic["GRID_HEIGHT"])] for x in range(self.dic["GRID_WIDTH"])]
+
     def __read_config(self):
-        """ Read the size of the grid and window and loads into a dictionary """   
+        """ Read the size of the grid and window and loads into a dictionary """
         # Open config file
         size_file = os.path.join(self.data_folder, "env_size.txt")
         with open(size_file, "r") as file:
@@ -141,9 +141,8 @@ class Env:
                 else:
                     value = int(raw_value)
 
-                self.dic[keyword] = value               
+                self.dic[keyword] = value
 
-    
     def add_agent(self, mind, state=PhysAgent.ACTIVE):
         """ This public method adds an agent to the simulator.
         It connects the mind to the body (PhysAgent)
@@ -152,7 +151,7 @@ class Env:
         @param state: the state of the physical agent
         @return: an object that is the physical agent"""
 
-        body = PhysAgent(mind, self, self.dic["BASE"][0], self.dic["BASE"][1], state) 
+        body = PhysAgent(mind, self, self.dic["BASE"][0], self.dic["BASE"][1], state)
         self.agents.append(body)
         return body
 
@@ -160,8 +159,8 @@ class Env:
         """ This private method draw the grid and its items """
 
         # Set cell width and height
-        cell_w = self.dic["WINDOW_WIDTH"]/self.dic["GRID_WIDTH"]
-        cell_h = self.dic["WINDOW_HEIGHT"]/self.dic["GRID_HEIGHT"]
+        cell_w = self.dic["WINDOW_WIDTH"] / self.dic["GRID_WIDTH"]
+        cell_h = self.dic["WINDOW_HEIGHT"] / self.dic["GRID_HEIGHT"]
 
         # Clear the screen
         self.screen.fill(Env.WHITE)
@@ -174,41 +173,40 @@ class Env:
 
                 if self.walls[x][y] == 1:
                     wall_rect = pygame.Rect(x * cell_w + 1, y * cell_h + 1, cell_w - 2, cell_h - 2)
-                    pygame.draw.rect(self.screen, Env.BLACK, wall_rect)                   
+                    pygame.draw.rect(self.screen, Env.BLACK, wall_rect)
 
-                # Paint visited cells
-                if self.visited[x][y] != (0,0,0):
+                    # Paint visited cells
+                if self.visited[x][y] != (0, 0, 0):
                     trace_color = self.visited[x][y]
                     visited_rect = pygame.Rect(x * cell_w + 1, y * cell_h + 1, cell_w - 2, cell_h - 2)
                     pygame.draw.rect(self.screen, trace_color, visited_rect)
 
         # Draw a marker at the base
         rect = pygame.Rect(self.dic["BASE"][0] * cell_w, self.dic["BASE"][1] * cell_h, cell_w, cell_h)
-        pygame.draw.rect(self.screen, Env.CYAN, rect, 4)       
+        pygame.draw.rect(self.screen, Env.CYAN, rect, 4)
 
         # Draw the victims
-        v=0
+        v = 0
         for victim in self.victims:
             victim_rect = pygame.Rect(victim[0] * cell_w + 2, victim[1] * cell_h + 2, cell_w - 4, cell_h - 4)
-            c = self.severity[v]-1
+            c = self.severity[v] - 1
             pygame.draw.ellipse(self.screen, Env.VICTIM_COLOR[c], victim_rect)
-            if self.saved[v] != []:
+            if self.saved[v]:
                 pygame.draw.ellipse(self.screen, self.WHITE, victim_rect, 3)
-            elif self.found[v] != []:
+            elif self.found[v]:
                 pygame.draw.ellipse(self.screen, self.BLACK, victim_rect, 3)
             v = v + 1
 
         # Draw the physical agents
         for body in self.agents:
             if body.state == PhysAgent.ACTIVE:
-               ag_rect = pygame.Rect(body.x * cell_w, body.y * cell_h, cell_w, cell_h)
-               pygame.draw.rect(self.screen, body.mind.COLOR, ag_rect)
-               active_idle = True
+                ag_rect = pygame.Rect(body.x * cell_w, body.y * cell_h, cell_w, cell_h)
+                pygame.draw.rect(self.screen, body.mind.COLOR, ag_rect)
+                active_idle = True
 
         # Update the display
         pygame.display.update()
-        
-                
+
     def run(self):
         """ This public method is the engine of the simulator. It calls the deliberate
         method of each ACTIVE agent situated in the environment. Then, it updates the state
@@ -224,16 +222,16 @@ class Env:
 
         # Draw the environment with items
         self.__draw()
-        
+
         # Create the main loop
         running = True
 
         while running:
             # Handle events
             for event in pygame.event.get():
-                if event.type == pygame.QUIT:                  
+                if event.type == pygame.QUIT:
                     running = False
-                    
+
             # control whether or not there are active or idle agents
             active_or_idle = False
 
@@ -250,31 +248,29 @@ class Env:
                         body.set_state(PhysAgent.DEAD)
                         active_or_idle = False
                         print("from env: " + body.mind.NAME + ": time limit reached, no batt, it is dead")
-                    elif not more_actions_to_do: # agent do not have more actions to do
+                    elif not more_actions_to_do:  # agent do not have more actions to do
                         if body.at_base():
-                            print("from env: ag " + body.mind.NAME + " succesfully terminated, it is at the base")
+                            print("from env: ag " + body.mind.NAME + " successfully terminated, it is at the base")
                             body.set_state(PhysAgent.ENDED)
                             active_or_idle = False
                         else:
-                            print("from env: ag " + body.mind.NAME + " is not at the base and asked for termination. Now, it's dead")
+                            print(
+                                "from env: ag " + body.mind.NAME + " is not at the base and asked for termination. Now, it's dead")
                             body.set_state(PhysAgent.DEAD)
                             active_or_idle = False
 
                 elif body.state == PhysAgent.IDLE:
                     active_or_idle = True
-    
-
-        
 
             # Update the grid after the delay
             if self.dic["DELAY"] > 0:
                 time.sleep(self.dic["DELAY"])
-                
+
             self.__draw()
 
             # Show metrics
             if not active_or_idle:
-                #for line in body.mind.cost_matrix:
+                # for line in body.mind.cost_matrix:
                 #    print(line)
                 print("from env: no active or idle agent scheduled for execution... terminating")
                 victim_positions = self.print_results()
@@ -285,7 +281,6 @@ class Env:
                 input("from env: Tecle qualquer coisa para encerrar >>")
                 running = False
 
-
         # Quit Pygame
         pygame.quit()
 
@@ -295,43 +290,47 @@ class Env:
         @param type_str: it is a string for composing the pring
         @param sub: it is a character representing the metric"""
 
-
         if len(victims) > 0:
             sev = []
             grav = []
-            tot_grav = 0        # for peg or psg calculation
+            tot_grav = 0  # for peg or psg calculation
             for v in victims:
                 sev.append(self.severity[v])
                 grav.append(self.gravity[v])
                 tot_grav = tot_grav + self.gravity[v]
-
 
             print(f"\n{type_str} victims: (id, severity, gravity)")
             for i in range(len(victims)):
                 print(f"({victims[i]:d}, {sev[i]:d}, {grav[i]:.1f})", end=' ')
 
             print("\n")
-            print(f"Critical victims {type_str}     (V{sub}1) = {sev.count(1):3d} out of {self.severity.count(1)} ({100*sev.count(1)/self.severity.count(1):.1f})%")
-            print(f"Instable victims {type_str}     (V{sub}2) = {sev.count(2):3d} out of {self.severity.count(2)} ({100*sev.count(2)/self.severity.count(2):.1f})%")
-            print(f"Pot. inst. victims {type_str}   (V{sub}3) = {sev.count(3):3d} out of {self.severity.count(3)} ({100*sev.count(3)/self.severity.count(3):.1f})%")
-            print(f"Stable victims {type_str}       (V{sub}4) = {sev.count(4):3d} out of {self.severity.count(4)} ({100*sev.count(4)/self.severity.count(4):.1f})%")
+            print(
+                f"Critical victims {type_str}     (V{sub}1) = {sev.count(1):3d} out of {self.severity.count(1)} ({100 * sev.count(1) / self.severity.count(1):.1f})%")
+            print(
+                f"Instable victims {type_str}     (V{sub}2) = {sev.count(2):3d} out of {self.severity.count(2)} ({100 * sev.count(2) / self.severity.count(2):.1f})%")
+            print(
+                f"Pot. inst. victims {type_str}   (V{sub}3) = {sev.count(3):3d} out of {self.severity.count(3)} ({100 * sev.count(3) / self.severity.count(3):.1f})%")
+            print(
+                f"Stable victims {type_str}       (V{sub}4) = {sev.count(4):3d} out of {self.severity.count(4)} ({100 * sev.count(4) / self.severity.count(4):.1f})%")
             print("--------------------------------------")
-            print(f"Total of {type_str} victims     (V{sub})  = {len(sev):3d} ({100*float(len(sev)/self.nb_of_victims):.2f}%)")
+            print(
+                f"Total of {type_str} victims     (V{sub})  = {len(sev):3d} ({100 * float(len(sev) / self.nb_of_victims):.2f}%)")
 
-            weighted = ((6*sev.count(1) + 3*sev.count(2) + 2*sev.count(3) + sev.count(4))/
-            (6*self.severity.count(1)+3*self.severity.count(2)+2*self.severity.count(3)+self.severity.count(4)))
+            weighted = ((6 * sev.count(1) + 3 * sev.count(2) + 2 * sev.count(3) + sev.count(4)) /
+                        (6 * self.severity.count(1) + 3 * self.severity.count(2) + 2 * self.severity.count(
+                            3) + self.severity.count(4)))
 
             print(f"Weighted {type_str} victims per severity (V{sub}g) = {weighted:.2f}\n")
-            
+
             print(f"Sum of gravities of all {type_str} victims = {tot_grav:.2f} of a total of {self.sum_gravity:.2f}")
-            print(f"  % of gravities of all {type_str} victims = {tot_grav/self.sum_gravity:.2f}")
+            print(f"  % of gravities of all {type_str} victims = {tot_grav / self.sum_gravity:.2f}")
         else:
             print(f"No {type_str} victims")
 
     def print_results(self):
         """ For each agent, print found victims and saved victims by severity
         This is what actually happened in the environment. Observe that the
-        beliefs of the agents may be different."""      
+        beliefs of the agents may be different."""
 
         print("\n\n\n*** Numbers of Victims in the Environment ***")
         print(f"Critical victims   (V1) = {self.severity.count(1):3d}")
@@ -340,7 +339,7 @@ class Env:
         print(f"Stable victims     (V4) = {self.severity.count(4):3d}")
         print("--------------------------------------")
         print(f"Total of victims   (V)  = {self.nb_of_victims:3d}")
-              
+
         print("\n\n*** Final results per agent ***")
         total_victims = []
         all_victims_pos = []
@@ -352,32 +351,32 @@ class Env:
             # Remaining time
             print("\n*** Used time ***")
             print(f"{body.mind.TLIM - body.rtime} of {body.mind.TLIM}")
-        
+
             # Found victims
             found = body.get_found_victims()
             for victim in found:
-                print(self.victims[victim])
                 if victim not in total_victims:
                     total_victims.append(victim)
                     all_victims_pos.append(self.victims[victim])
-            self.__print_victims(found, "found","e")
+            self.__print_victims(found, "found", "e")
 
             # Saved victims
             saved = body.get_saved_victims()
-            self.__print_victims(saved, "saved","s")
+            self.__print_victims(saved, "saved", "s")
 
         print("\n\n*** Total victims found ***")
         self.__print_victims(total_victims, "found", "")
         return np.array(all_victims_pos)
- 
-    def find_elbow(self, data):
+
+    @staticmethod
+    def find_elbow(data):
         inertia_values = []
-        for k in range(1, ceil(len(data)/2)):
+        for k in range(1, ceil(len(data) / 2)):
             km = KMeans(n_clusters=k, n_init=10)
             km.fit(data)
             inertia_values.append(km.inertia_)
 
-        kn = KneeLocator(range(1, len(inertia_values)+1), inertia_values, curve='convex', direction='decreasing')
+        kn = KneeLocator(range(1, len(inertia_values) + 1), inertia_values, curve='convex', direction='decreasing')
         if kn.knee is None:
             return 3
         return kn.knee
@@ -391,7 +390,7 @@ class Env:
                 data[y_km == i, 0], data[y_km == i, 1],
                 s=50, c=color_array[i],
                 marker='s', edgecolor='black',
-                label=f'cluster {i+1}'
+                label=f'cluster {i + 1}'
             )
 
         # plot the centroids
@@ -404,4 +403,3 @@ class Env:
         plt.legend(scatterpoints=1)
         plt.grid()
         plt.show()
-
