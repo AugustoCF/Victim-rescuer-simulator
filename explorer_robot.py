@@ -251,15 +251,16 @@ class ExplorerRobot(AbstractAgent):
                     )})
 
     def deliberate(self) -> bool:
-        if self.pos == (0, 0) and self.body.rtime < 3:
+        if self.pos == (0, 0) and self.body.rtime < 2 * min(self.COST_LINE, self.COST_DIAG):
             return False
 
         self.read_nearby_tiles()
         self.check_for_victim()
         self.remove_unreachable_tiles()
 
-        if self.body.rtime < self.get_cost_from_matrix(self.current_matrix_pos) + 3:
+        if self.body.rtime <= self.get_cost_from_matrix(self.current_matrix_pos) + 3:
             self.get_back_to_base()
+            return False
         elif len(self.path_not_tested[self.pos]) == 0:
             self.move_backtrack()
         else:
