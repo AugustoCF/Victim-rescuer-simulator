@@ -137,7 +137,8 @@ class Explorer_robot (AbstractAgent):
             walk_cost = self.action_cost[dir.name]
             time_left = self.body.rtime - walk_cost
 
-            cost = self.path_to_origin(pos=(x, y))
+            #cost = self.path_to_origin(pos=(x, y))
+            cost = self.cost_matrix[y][x]
 
 
             if cost > time_left:
@@ -221,7 +222,7 @@ class Explorer_robot (AbstractAgent):
         self.order_paths()
   
         dx, dy = self.path_not_tested[self.pos].pop(0).value
-
+        print(self.path_not_tested[self.pos])
         walk = self.body.walk(dx=dx, dy=dy)
 
         self.pos = (self.pos[0] + dx, self.pos[1] + dy)
@@ -232,13 +233,15 @@ class Explorer_robot (AbstractAgent):
 
 
 
+
+
     def check_for_victim(self) -> None:
         victim_id = self.body.check_for_victim()
 
         if victim_id != -1:      
             time_left = self.body.rtime - self.COST_READ
-            cost = self.path_to_origin(pos=self.pos)
-
+            #cost = self.path_to_origin(pos=self.pos)
+            cost = self.cost_matrix[self.pos_matrix[1]][self.pos_matrix[0]]
             if cost < time_left:
                 vital_signs = self.body.read_vital_signals(victim_id)
                 self.victims.update
@@ -259,13 +262,18 @@ class Explorer_robot (AbstractAgent):
     def deliberate(self) -> bool:
         if self.pos == (0, 0) and self.body.rtime < 2 * min(self.COST_LINE, self.COST_DIAG):
             return False
+
+
         
 
         self.read_nearby_tiles()
         self.check_for_victim()
         self.remove_unreachable_tiles()
 
-  
+        if self.body.rtime <= self.cost_matrix[self.pos_matrix[1]][self.pos_matrix[0]] + 2:
+            print(self.body.rtime, self.cost_matrix[self.pos_matrix[1]][self.pos_matrix[0]] )
+            while self.pos != (0, 0) or self.body.state != 2 or self.body.state != -1:
+                self.move_Backtrack()
         if len(self.path_not_tested[self.pos]) == 0:
             self.move_Backtrack()
         else:

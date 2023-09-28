@@ -4,6 +4,7 @@
 import csv
 import os
 import time
+from pprint import pprint
 
 import numpy as np
 import pygame
@@ -248,14 +249,13 @@ class Env:
                     if body.end_of_time():
                         body.set_state(PhysAgent.DEAD)
                         active_or_idle = False
-                        print(body.mind.cost_matrix)
                         print("from env: " + body.mind.NAME + ": time limit reached, no batt, it is dead")
                     elif not more_actions_to_do: # agent do not have more actions to do
                         if body.at_base():
                             print("from env: ag " + body.mind.NAME + " succesfully terminated, it is at the base")
                             body.set_state(PhysAgent.ENDED)
                             active_or_idle = False
-                            print(body.mind.cost_matrix)
+
                         else:
                             print("from env: ag " + body.mind.NAME + " is not at the base and asked for termination. Now, it's dead")
                             body.set_state(PhysAgent.DEAD)
