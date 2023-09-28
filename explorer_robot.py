@@ -3,6 +3,8 @@ import random
 import networkx as nx
 from abc import abstractmethod
 
+from typing import Tuple
+
 from abstract_agent import AbstractAgent
 from physical_agent import PhysAgent
 from rescuer import Rescuer
@@ -16,11 +18,13 @@ class Explorer_robot (AbstractAgent):
         super().__init__(env, config_file)
 
         self.graph = nx.Graph()                                            
-        self.pos = (0,0)
+        self.pos = (0, 0)
         self.victims = {}                            
         self.tile_tested = {}                       
         self.path_not_tested = {}       
         self.backtrack = {}
+        self.cost_matrix = []
+        self.pos_matrix = (0, 0)
 
 
         self.action_cost = {
@@ -31,6 +35,7 @@ class Explorer_robot (AbstractAgent):
         self.priority_directions = priority_directions
         self.add_position_to_map(dir= Direction.NONE, tile_type= PhysAgent.CLEAR)  
         self.read_nearby_tiles()
+        self.instantiate_matrix()
                                       
 
     def position_shift (self, dir: Direction, x, y):
@@ -49,6 +54,7 @@ class Explorer_robot (AbstractAgent):
         elif (dx, dy) == Direction.SW.value : return Direction.NE
 
 
+
     def add_position_to_map(self, dir: Direction, tile_type: int) -> None:
         x, y = self.position_shift(dir, self.pos[0], self.pos[1])
 
@@ -57,7 +63,7 @@ class Explorer_robot (AbstractAgent):
 
         self.tile_tested[(x, y)] = tile_type
         self.path_not_tested[(x, y)] = DIRECTIONS.copy()
-        self.backtrack[(x, y)] = []
+        #self.backtrack[(x, y)] = []
 
         for dir in DIRECTIONS:
             x2, y2 = self.position_shift(dir, x, y)
@@ -73,6 +79,50 @@ class Explorer_robot (AbstractAgent):
 
         for i in range(8):
             self.add_position_to_map(dir=DIRECTIONS[i], tile_type=nearby_tiles[i])
+
+    def instantiate_matrix(self) -> None:
+        time = round(self.TLIM)
+        if not time % 2:
+            time = time + 1
+        x = round(time / 2) - 1 # o -1 é pra ficar no meio, contagem começa em 0
+        y = round(time / 2) - 1
+        for i in range(time):
+            row = []
+            for j in range(time):
+                row.append(-1)
+            self.cost_matrix.append(row)
+        self.cost_matrix[y][x] = 0  # starts initial tile as 0
+        self.pos_matrix = (y, x)
+
+    def update_time_matrix(self) -> None:
+        """The matrix index is [row][column], that means that these values on the delta should be read as [vertical][horizontal]
+        not as [x][y], as [0,-1] doesn't go up, it goes left. The order here is, clockwise, left, left up, up, right up,
+        right, right down, down, left down, finish.
+        """
+        position = self.find_matrix_lowest()
+        y = self.pos_matrix[0]
+        x = self.pos_matrix[1]
+        lowest = self.cost_matrix[y + position[1]][x + position[0]]
+        if position[0] != 0 and position[1] != 0:  # checks if the direction was a diagonal
+            self.cost_matrix[y][x] = lowest + 1.5
+        else:
+            self.cost_matrix[y][x] = lowest + 1
+
+    def find_matrix_lowest(self) -> tuple:  # returns the delta for the lowest cost, so the robot knows where to move
+        delta = [(0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1)]
+        lowest = 100000
+        position = []
+        y = self.pos_matrix[0]
+        x = self.pos_matrix[1]
+
+        for d in delta:
+            dy = d[1]
+            dx = d[0]
+            cost = self.cost_matrix[y + dy][x + dx]
+            if cost < lowest and cost != -1:
+                lowest = cost
+                position = d
+        return position
 
 
     def remove_unreachable_tiles(self) -> None:
@@ -95,7 +145,7 @@ class Explorer_robot (AbstractAgent):
                 continue
 
 
-    def path_to_origin(self, pos: tuple[int, int]) -> float:
+    def path_to_origin(self, pos: Tuple[int, int]) -> float:
         path = nx.astar_path(self.graph, pos, (0,0), None, 'weight')
 
         cost_of_path = nx.shortest_path_length(self.graph, pos,(0,0), 'weight')
@@ -106,7 +156,7 @@ class Explorer_robot (AbstractAgent):
 
 
     def move_Backtrack(self) -> None:
-        dx, dy = self.backtrack[self.pos].pop(-1).value     
+        dx, dy = self.find_matrix_lowest()
 
         walk = self.body.walk(dx=dx, dy=dy)
 
@@ -175,8 +225,11 @@ class Explorer_robot (AbstractAgent):
         walk = self.body.walk(dx=dx, dy=dy)
 
         self.pos = (self.pos[0] + dx, self.pos[1] + dy)
+        self.pos_matrix = (self.pos_matrix[0] + dy, self.pos_matrix[1] + dx)
+        self.update_time_matrix()
     
-        self.backtrack[self.pos].append(self.oppositeDirection(dx, dy))
+        #self.backtrack[self.pos].append(self.oppositeDirection(dx, dy))
+
 
 
     def check_for_victim(self) -> None:
@@ -211,6 +264,7 @@ class Explorer_robot (AbstractAgent):
         self.read_nearby_tiles()
         self.check_for_victim()
         self.remove_unreachable_tiles()
+
   
         if len(self.path_not_tested[self.pos]) == 0:
             self.move_Backtrack()
