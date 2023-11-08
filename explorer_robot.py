@@ -3,6 +3,7 @@ import random
 import networkx as nx
 import numpy as np
 
+
 from abstract_agent import AbstractAgent
 from aux_file import Direction, DIRECTIONS
 from physical_agent import PhysAgent
@@ -57,6 +58,7 @@ class ExplorerRobot(AbstractAgent):
             return Direction.SE
         elif (dx, dy) == Direction.SW.value:
             return Direction.NE
+
 
     def add_position_to_map(self, direction: Direction, tile_type: int) -> None:
         x, y = self.position_shift(direction, self.pos[0], self.pos[1])
@@ -241,19 +243,12 @@ class ExplorerRobot(AbstractAgent):
             cost = self.get_cost_from_matrix(self.current_matrix_pos)
             if cost < time_left:
                 vital_signs = self.body.read_vital_signals(victim_id)
-                self.victims.update
-                ({
-                    victim_id: Victim(
-                        id=victim_id,
-                        pos=self.pos,
-                        pSist=vital_signs[1],
-                        pDiast=vital_signs[2],
-                        qPA=vital_signs[3],
-                        pulse=vital_signs[4],
-                        resp=vital_signs[5],
-                        grav=vital_signs[6],
-                        classif=vital_signs[7],
-                    )})
+               
+                victim = Victim(id=victim_id, pos=self.pos, pSist=vital_signs[1], pDiast=vital_signs[2], qPA=vital_signs[3], pulse=vital_signs[4], resp=vital_signs[5], grav=vital_signs[6], classif=vital_signs[7])
+
+                new_victim = {victim.id : victim}
+                self.victims.update(new_victim)
+                    
 
     def deliberate(self) -> bool:
         if self.pos == (0, 0) and self.body.rtime < 2 * min(self.COST_LINE, self.COST_DIAG):

@@ -19,3 +19,10 @@ class Victim:
     ):
         self.id = id
         self.pos = pos
+        self.pSist = pSist
+        self.pDiast = pDiast
+        self.qPA = qPA
+        self.pulse = pulse
+        self.resp = resp
+        self.grav = grav
+        self.classif = classif
