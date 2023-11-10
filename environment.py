@@ -275,9 +275,6 @@ class Env:
                 print("from env: no active or idle agent scheduled for execution... terminating")
                 victim_positions = self.print_results()
                 print("\n--------------")
-                model = KMeans(n_clusters=self.find_elbow(victim_positions), n_init=10)
-                model.fit(victim_positions)
-                self.plot_centroids(victim_positions, model)
                 input("from env: Tecle qualquer coisa para encerrar >>")
                 running = False
 
@@ -353,53 +350,19 @@ class Env:
             print(f"{body.mind.TLIM - body.rtime} of {body.mind.TLIM}")
 
             # Found victims
-            found = body.get_found_victims()
-            for victim in found:
-                if victim not in total_victims:
-                    total_victims.append(victim)
-                    all_victims_pos.append(self.victims[victim])
-            self.__print_victims(found, "found", "e")
+        #     # found = body.get_found_victims()
+        #     for victim in found:
+        #         if victim not in total_victims:
+        #             total_victims.append(victim)
+        #             all_victims_pos.append(self.victims[victim])
+        #     self.__print_victims(found, "found", "e")
 
-            # Saved victims
-            saved = body.get_saved_victims()
-            self.__print_victims(saved, "saved", "s")
+        #     # Saved victims
+        #     saved = body.get_saved_victims()
+        #     self.__print_victims(saved, "saved", "s")
 
-        print("\n\n*** Total victims found ***")
-        self.__print_victims(total_victims, "found", "")
-        return np.array(all_victims_pos)
+        # print("\n\n*** Total victims found ***")
+        # self.__print_victims(total_victims, "found", "")
+        # return np.array(all_victims_pos)
 
-    @staticmethod
-    def find_elbow(data):
-        inertia_values = []
-        for k in range(1, ceil(len(data) / 2)):
-            km = KMeans(n_clusters=k, n_init=10)
-            km.fit(data)
-            inertia_values.append(km.inertia_)
-
-        kn = KneeLocator(range(1, len(inertia_values) + 1), inertia_values, curve='convex', direction='decreasing')
-        if kn.knee is None:
-            return 3
-        return kn.knee
-
-    @staticmethod
-    def plot_centroids(data, km):
-        y_km = km.fit_predict(data)
-        color_array = ['lightblue', 'lightgreen', 'orange', 'yellow', 'pink', 'blue', 'green']
-        for i in range(len(km.cluster_centers_)):
-            plt.scatter(
-                data[y_km == i, 0], data[y_km == i, 1],
-                s=50, c=color_array[i],
-                marker='s', edgecolor='black',
-                label=f'cluster {i + 1}'
-            )
-
-        # plot the centroids
-        plt.scatter(
-            km.cluster_centers_[:, 0], km.cluster_centers_[:, 1],
-            s=250, marker='*',
-            c='red', edgecolor='black',
-            label='centroids'
-        )
-        plt.legend(scatterpoints=1)
-        plt.grid()
-        plt.show()
+   

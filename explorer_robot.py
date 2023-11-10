@@ -10,10 +10,12 @@ from physical_agent import PhysAgent
 from victim import Victim
 
 
+
 class ExplorerRobot(AbstractAgent):
-    def __init__(self, env, config_file, priority_directions):
+    def __init__(self, env, config_file, priority_directions, boss):
         super().__init__(env, config_file)
 
+        self.boss = boss
         self.graph = nx.Graph()
         self.pos = (0, 0)
         self.victims = {}
@@ -67,6 +69,7 @@ class ExplorerRobot(AbstractAgent):
             return
 
         self.tile_tested[(x, y)] = tile_type
+        self.boss.map_obstacles[(x,y)] = tile_type
         self.path_not_tested[(x, y)] = DIRECTIONS.copy()
         self.backtrack[(x, y)] = []
 
@@ -136,6 +139,7 @@ class ExplorerRobot(AbstractAgent):
             tile_type = self.tile_tested[(x, y)]
             if tile_type == PhysAgent.WALL or tile_type == PhysAgent.END:
                 self.path_not_tested[self.pos].remove(direction)
+
                 continue
 
             walk_cost = self.action_cost[direction.name]
@@ -244,14 +248,16 @@ class ExplorerRobot(AbstractAgent):
             if cost < time_left:
                 vital_signs = self.body.read_vital_signals(victim_id)
                
-                victim = Victim(id=victim_id, pos=self.pos, pSist=vital_signs[1], pDiast=vital_signs[2], qPA=vital_signs[3], pulse=vital_signs[4], resp=vital_signs[5], grav=vital_signs[6], classif=vital_signs[7])
+                victim = Victim(id=victim_id, pos=self.pos, pSist=vital_signs[1], pDiast=vital_signs[2], qPA=vital_signs[3], pulse=vital_signs[4], resp=vital_signs[5], grav= None, classif= None)
 
                 new_victim = {victim.id : victim}
                 self.victims.update(new_victim)
+                self.boss.map_victims.update(new_victim)
                     
 
     def deliberate(self) -> bool:
         if self.pos == (0, 0) and self.body.rtime < 2 * min(self.COST_LINE, self.COST_DIAG):
+            self.boss.alert_explorer_inactive()
             return False
 
         self.read_nearby_tiles()
@@ -260,6 +266,7 @@ class ExplorerRobot(AbstractAgent):
 
         if self.body.rtime <= self.get_cost_from_matrix(self.current_matrix_pos) + 3:
             self.get_back_to_base()
+            self.boss.alert_explorer_inactive()
             return False
         elif len(self.path_not_tested[self.pos]) == 0:
             self.move_backtrack()
