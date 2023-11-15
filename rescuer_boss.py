@@ -3,6 +3,8 @@ from fuzzy import Fuzzy
 from sklearn.cluster import KMeans
 import numpy as np
 from matplotlib import pyplot as plt
+from dijkstar import Graph, find_path
+from aux_file import DIRECTIONS
 
 class RescuerBoss(Rescuer):
     def __init__(self, env, config_file, rescuer_list, fuzzy):
@@ -12,6 +14,13 @@ class RescuerBoss(Rescuer):
         self.inactive_exp_counter = 0
         self.map_victims = {}
         self.map_obstacles = {}
+        self.map_graph = Graph()
+        self.victims_graph = Graph()
+
+        self.action_cost = {
+            "N": 1, "S": 1, "E": 1, "W": 1,
+            "NE": 1.5, "SE": 1.5, "NW": 1.5, "SW": 1.5
+        }
 
     def alert_explorer_inactive(self) -> None:
         self.inactive_exp_counter += 1
@@ -27,6 +36,8 @@ class RescuerBoss(Rescuer):
            valor.classif = self.fuzzy.predict_fuzzy(valor.pulse, valor.qPA, valor.resp)
         
         self.cluster_victims()
+        self.create_map_graph()
+
         
 
 
@@ -54,5 +65,30 @@ class RescuerBoss(Rescuer):
         # for i in range(len(km.cluster_centers_)):
 
             
+    def create_map_graph(self) -> None:
+        for coordenada, tile_type in self.map_obstacles.items():
+            if tile_type == 0:
+                self.map_graph.add_node(coordenada)
+                for dir in DIRECTIONS:
+                    next_coord = (coordenada[0] + dir.value[0], coordenada[1] + dir.value[1])
+                    if next_coord in self.map_obstacles and self.map_obstacles[next_coord] == 0:
+                        self.map_graph.add_edge(coordenada, next_coord, weight=self.action_cost[dir.name])  # A -> B
+                        self.map_graph.add_edge(next_coord, coordenada, weight=self.action_cost[dir.name])  # B -> A
+
+
+    def create_victims_graph(self) -> None:
+        self.victims_graph.add_node(-1)
+
+        for id, victim in self.map_victims.items():
+            self.victims_graph.add_node(id)
+            for id2, victim2 in self.map_victims.items():
+                cost = find_path(self.map_graph, victim.pos, victim2.pos).total_cost
+                self.victims_graph.add_edge(id, id2, cost)
+                self.victims_graph.add_edge(id2, id, cost)
+            
+            cost_origin = find_path(self.map_graph, victim.pos, (0,0)).total_cost
+            self.victims_graph.add_edge(-1, id, cost_origin)
+            self.victims_graph.add_edge(id, -1, cost_origin)
+
 
         

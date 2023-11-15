@@ -26,10 +26,10 @@ DIRECTIONS = [
     Direction.NW,
 ]
 
-priority_directions = [['N', 'S', 'E', 'W', 'NE', 'SE', 'NW', 'SW'],
-                      ['S', 'N', 'E', 'W', 'SW', 'NW', 'SE', 'NE'],
-                      ['E', 'W', 'N', 'S', 'SE', 'SW', 'NE', 'NW'],
-                      ['W', 'E', 'N', 'S', 'NW', 'NE', 'SW', 'SE']
+priority_directions = [['N', 'E', 'S', 'W', 'NE', 'SE', 'NW', 'SW'],
+                      ['S', 'E', 'N', 'W', 'SW', 'NW', 'SE', 'NE'],
+                      ['W', 'N', 'E', 'S', 'SE', 'SW', 'NE', 'NW'],
+                      ['W', 'S', 'E', 'N', 'NW', 'NE', 'SW', 'SE']
 ]
 
 
