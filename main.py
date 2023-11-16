@@ -5,7 +5,7 @@ import skfuzzy as fuzz
 from skfuzzy import control as ctrl
 
 from aux_file import priority_directions
-
+from rescuer_robot import RescuerRobot
 ## importa classes
 from environment import Env
 from explorer_robot import ExplorerRobot
@@ -32,9 +32,9 @@ def main(data_folder_name):
     # explorer_file_3 = os.path.join(data_folder, "explorer_config_q3.txt")
     # explorer_file_4 = os.path.join(data_folder, "explorer_config_q4.txt")
 
-    resc1 = Rescuer(env, rescuer_file)
-    resc2 = Rescuer(env, rescuer_file)
-    resc3 = Rescuer(env, rescuer_file)
+    resc1 = RescuerRobot(env, rescuer_file)
+    resc2 = RescuerRobot(env, rescuer_file)
+    resc3 = RescuerRobot(env, rescuer_file)
 
     training_file = os.path.join("datasets", "data_800vic", "sinais_vitais_com_label.txt")
 

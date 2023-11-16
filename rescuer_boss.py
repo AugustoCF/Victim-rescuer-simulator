@@ -2,9 +2,12 @@ from rescuer import Rescuer
 from fuzzy import Fuzzy
 from sklearn.cluster import KMeans
 import numpy as np
+import os
 from matplotlib import pyplot as plt
 from dijkstar import Graph, find_path
 from aux_file import DIRECTIONS
+from generic_alg import GeneticAlgorithmEngine
+from physical_agent import PhysAgent
 
 class RescuerBoss(Rescuer):
     def __init__(self, env, config_file, rescuer_list, fuzzy):
@@ -16,6 +19,7 @@ class RescuerBoss(Rescuer):
         self.map_obstacles = {}
         self.map_graph = Graph()
         self.victims_graph = Graph()
+        self.rescuers = rescuer_list
 
         self.action_cost = {
             "N": 1, "S": 1, "E": 1, "W": 1,
@@ -27,9 +31,6 @@ class RescuerBoss(Rescuer):
 
         if (self.inactive_exp_counter == 1):
             self.prepare_rescuers()
-       
-
-
 
     def prepare_rescuers(self) -> None:
         for chave, valor in self.map_victims.items():
@@ -37,9 +38,6 @@ class RescuerBoss(Rescuer):
         
         self.cluster_victims()
         self.create_map_graph()
-
-        
-
 
     def cluster_victims(self) -> None:
         data = []
@@ -63,8 +61,7 @@ class RescuerBoss(Rescuer):
                 for i in valor:
                     outfile.write(f"{i.id},{i.pos[0]},{i.pos[1]},{0},{i.classif}\n")
         # for i in range(len(km.cluster_centers_)):
-
-            
+          
     def create_map_graph(self) -> None:
         for coordenada, tile_type in self.map_obstacles.items():
             if tile_type == 0:
@@ -74,8 +71,7 @@ class RescuerBoss(Rescuer):
                     if next_coord in self.map_obstacles and self.map_obstacles[next_coord] == 0:
                         self.map_graph.add_edge(coordenada, next_coord, weight=self.action_cost[dir.name])  # A -> B
                         self.map_graph.add_edge(next_coord, coordenada, weight=self.action_cost[dir.name])  # B -> A
-
-
+                        
     def create_victims_graph(self) -> None:
         self.victims_graph.add_node(-1)
 
@@ -90,5 +86,38 @@ class RescuerBoss(Rescuer):
             self.victims_graph.add_edge(-1, id, cost_origin)
             self.victims_graph.add_edge(id, -1, cost_origin)
 
+    def _calculate_directions(self,cluster_index: int) -> list[DIRECTIONS]:
+        
+        victim_list = self._victim_clusters[cluster_index]
 
+        ga = GeneticAlgorithmEngine(
+            full_map=self._full_map,
+            victims_list=victim_list,
+            COST_LINE=self.COST_LINE,
+            COST_DIAG=self.COST_DIAG,
+            COST_RESCUE=self.COST_FIRST_AID,
+            TIME_LIMIT=self.TLIM,
+            POPULATION_SIZE=100,
+            ELITE_SIZE=10,
+            MUTATION_RATE=0.1,
+            GENERATION_LIMIT=100,
+            EARLY_STOP_GENERATIONS=10,
+        )
+
+        actions = ga.run()
+
+        return actions
+    
+    def _run_rescue(self):
+        for i, follower in enumerate(self.rescuers):
+            # Calculate the sequence of directions for each rescuer
+            print("CALCULANDO ROTA: " + follower.NAME)
+            follower.directions = self._calculate_directions(i)
+            # Assign the victims to the rescuers
+            follower.victims = {victim.id: victim for victim in self._victim_clusters[i]}
+            # Activate the rescuer
+            follower.body.set_state(PhysAgent.ACTIVE)
+
+        # Erase victim result file
+        open(os.path.join("results", "salvas.txt"), "w").close()
         
