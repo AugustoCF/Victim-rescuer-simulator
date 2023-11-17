@@ -41,7 +41,7 @@ def main(data_folder_name):
     fuzzy = Fuzzy()
     fuzzy.training_fuzzy(training_file)
     # Instantiate agents rescuer and explorer
-    resc_b = RescuerBoss(env, rescuer_file, [resc1, resc2, resc3], fuzzy)
+    resc_b = RescuerBoss(env, rescuer_file, [resc1, resc2, resc3],fuzzy)
 
     # Explorer needs to know rescuer to send the map
     # that's why rescuer is instatiated before

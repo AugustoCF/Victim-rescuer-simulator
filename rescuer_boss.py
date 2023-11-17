@@ -5,9 +5,11 @@ import numpy as np
 import os
 from matplotlib import pyplot as plt
 from dijkstar import Graph, find_path
-from aux_file import DIRECTIONS
+from aux_file import DIRECTIONS, Direction
 from generic_alg import GeneticAlgorithmEngine
 from physical_agent import PhysAgent
+from victim import Victim
+
 
 class RescuerBoss(Rescuer):
     def __init__(self, env, config_file, rescuer_list, fuzzy):
@@ -20,6 +22,7 @@ class RescuerBoss(Rescuer):
         self.map_graph = Graph()
         self.victims_graph = Graph()
         self.rescuers = rescuer_list
+        self.victim_clusters : list[list[Victim]] = [None,None,None,None]
 
         self.action_cost = {
             "N": 1, "S": 1, "E": 1, "W": 1,
@@ -38,6 +41,8 @@ class RescuerBoss(Rescuer):
         
         self.cluster_victims()
         self.create_map_graph()
+        self.create_victims_graph()
+        self._run_rescue()
 
     def cluster_victims(self) -> None:
         data = []
@@ -61,6 +66,8 @@ class RescuerBoss(Rescuer):
                 for i in valor:
                     outfile.write(f"{i.id},{i.pos[0]},{i.pos[1]},{0},{i.classif}\n")
         # for i in range(len(km.cluster_centers_)):
+        for chave,valor in clusters.items():
+            self.victim_clusters[chave-1] = valor
           
     def create_map_graph(self) -> None:
         for coordenada, tile_type in self.map_obstacles.items():
@@ -69,8 +76,8 @@ class RescuerBoss(Rescuer):
                 for dir in DIRECTIONS:
                     next_coord = (coordenada[0] + dir.value[0], coordenada[1] + dir.value[1])
                     if next_coord in self.map_obstacles and self.map_obstacles[next_coord] == 0:
-                        self.map_graph.add_edge(coordenada, next_coord, weight=self.action_cost[dir.name])  # A -> B
-                        self.map_graph.add_edge(next_coord, coordenada, weight=self.action_cost[dir.name])  # B -> A
+                        self.map_graph.add_edge(coordenada, next_coord,self.action_cost[dir.name])  # A -> B
+                        self.map_graph.add_edge(next_coord, coordenada, self.action_cost[dir.name])  # B -> A
                         
     def create_victims_graph(self) -> None:
         self.victims_graph.add_node(-1)
@@ -86,15 +93,12 @@ class RescuerBoss(Rescuer):
             self.victims_graph.add_edge(-1, id, cost_origin)
             self.victims_graph.add_edge(id, -1, cost_origin)
 
-    def _calculate_directions(self,cluster_index: int) -> list[DIRECTIONS]:
+    def _calculate_directions(self,cluster_index: int) -> list[Direction]:
         
-        victim_list = self._victim_clusters[cluster_index]
+        victim_list = self.victim_clusters[cluster_index]
 
         ga = GeneticAlgorithmEngine(
-            full_map=self._full_map,
-            victims_list=victim_list,
-            COST_LINE=self.COST_LINE,
-            COST_DIAG=self.COST_DIAG,
+            victims_dict= self.map_victims,
             COST_RESCUE=self.COST_FIRST_AID,
             TIME_LIMIT=self.TLIM,
             POPULATION_SIZE=100,
@@ -102,6 +106,8 @@ class RescuerBoss(Rescuer):
             MUTATION_RATE=0.1,
             GENERATION_LIMIT=100,
             EARLY_STOP_GENERATIONS=10,
+            VICTIMS_GRAPH = self.victims_graph,
+            MAP_GRAPH = self.map_graph,
         )
 
         actions = ga.run()
@@ -109,15 +115,12 @@ class RescuerBoss(Rescuer):
         return actions
     
     def _run_rescue(self):
-        for i, follower in enumerate(self.rescuers):
-            # Calculate the sequence of directions for each rescuer
-            print("CALCULANDO ROTA: " + follower.NAME)
-            follower.directions = self._calculate_directions(i)
-            # Assign the victims to the rescuers
-            follower.victims = {victim.id: victim for victim in self._victim_clusters[i]}
-            # Activate the rescuer
-            follower.body.set_state(PhysAgent.ACTIVE)
-
+        for i, rescuer in enumerate(self.rescuers):
+            self.rescuers[i].directions = self._calculate_directions(i)
+            self.rescuers[i].victims = {victim.id: victim for victim in self.victim_clusters[i]}
+            self.rescuers[i].body.set_state(PhysAgent.ACTIVE)
+        
         # Erase victim result file
-        open(os.path.join("results", "salvas.txt"), "w").close()
+        open("salvas.txt", "w").close()
+        
         

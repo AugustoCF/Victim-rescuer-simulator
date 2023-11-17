@@ -4,8 +4,8 @@ import numpy as np
 
 from abstract_agent import AbstractAgent
 from physical_agent import PhysAgent
-from aux_file import Direction, Victim
-
+from aux_file import Direction
+from victim import Victim
 
 class RescuerRobot(AbstractAgent):
     def __init__(self, env, config_file):
@@ -15,7 +15,7 @@ class RescuerRobot(AbstractAgent):
         self.directions: list[Direction] = []
 
         # The list of victims it has to rescue
-        self.victims: dict[int, Victim] = {}
+        self.victims : dict[int,Victim] = {}
 
         # Victims already rescued
         self.victims_rescued = set()
@@ -35,27 +35,19 @@ class RescuerRobot(AbstractAgent):
         # move to next tile
         next_move = self.directions.pop(0)
         dx, dy = next_move.value
-        walk = self.body.walk(dx=dx, dy=dy)
-        if walk < 0:
-            # Should never happen
-            if walk == PhysAgent.BUMPED:
-                raise Exception("Rescuer tried to move to an invalid tile")
-            if walk == PhysAgent.TIME_EXCEEDED:
-                raise Exception("Rescuer ran out of battery")
-
+        self.body.walk(dx=dx, dy=dy)
+        
         # rescue victim if possible
         victim_id = self.body.check_for_victim()
-        if (victim_id >= 0) and (victim_id in self.victims) and (victim_id not in self.victims_rescued):
-            res = self.body.first_aid(victim_id)
-            if not res:
-                # Should never happen
-                raise Exception("Rescuer failed to rescue a victim")
+        if (victim_id != -1) and (victim_id in self.victims) and (victim_id not in self.victims_rescued):
+            self.body.first_aid(victim_id)
+
             self.victims_rescued.add(victim_id)
             # log the rescue
             print(
-                f"Rescuer {self.NAME} rescued victim {victim_id} at ({self.body.x},{self.body.y})"
+                f"{self.NAME}: rescued {victim_id} at ({self.body.x},{self.body.y})"
             )
-            with open(os.path.join("results", "salvas.txt"), "a") as f:
+            with open("salvas.txt", "a") as f:
                 v = self.victims[victim_id]
                 f.write(f"{victim_id},{self.body.x},{self.body.y},{v.grav},{v.classif}\n")
 
